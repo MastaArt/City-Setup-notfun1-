@@ -20,6 +20,10 @@ ICON=#("PhysX_Main", 30)
 
 * First release =
 
+[1.0.1]
+
+- BugFix: Select path exception =
+
 [ABOUT]
 
 Assign materials from library to objects with according names=
@@ -209,8 +213,10 @@ rollout _STEP1 "Material Renamer"
 	on btnSelectMatPath pressed do
 	(
 		szMatPath = getMatPath()
-					
-		f = getOpenFileName caption:"Choose Material Lib Path" filename: szMatPath types:"mat (*.mat)|*.mat"
+		tmp = szMatPath
+		if(tmp == undefined) do tmp = ""
+		
+		f = getOpenFileName caption:"Choose Material Lib Path" filename: tmp types:"mat (*.mat)|*.mat"
 			
 		if(f == undefined) do return false
 		
