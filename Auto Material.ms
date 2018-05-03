@@ -2,7 +2,7 @@
 [INFO] 
 
 NAME = Auto Material
-VERSION = 1.0.0
+VERSION = 1.0.2
 AUTHOR = Vasily Lukyanenko
 DEV = 3DGROUND
 CUSTOMER = Andrew Andreyuk
@@ -23,6 +23,11 @@ ICON=#("PhysX_Main", 30)
 [1.0.1]
 
 - BugFix: Select path exception =
+
+[1.0.2]
+
++ Added: Choose apply materials to all or selected objects =
++ Added: Highlight error log with special symbols =
 
 [ABOUT]
 
@@ -130,9 +135,11 @@ rollout _STEP1 "Material Renamer"
 	
 	group "Material Lib Path"
 	(
+		radiobuttons rdoAssignTo "Assign Materials To:" labels: #("All scene objects", "Selected objects") align: #left
 		edittext edtMatPath "" height: 25 readOnly: true
 		button btnSelectMatPath "Select Path" 
 	)
+	
 	
 	button btnAutoAssignMaterials "Assign Materials to Objects" height: 35 width: 240 offset: [0, 12]
 	
@@ -168,6 +175,9 @@ rollout _STEP1 "Material Renamer"
 		matLib = loadTempMaterialLibrary szMatPath
 				
 		if(matLib == undefined or matLib.count == 0) do return messageBox "Material library is empty!" title: "Error!"
+		if(rdoAssignTo.state == 2 and selection.count == 0) do return messageBox "Please select objects!" title: "Warning!"
+		
+		
 		c = matLib.count
 		
 		matNames = for i in 1 to c where matLib[i] != undefined collect matLib[i].name
@@ -180,7 +190,7 @@ rollout _STEP1 "Material Renamer"
 			
 			m = getMatByName n matLib
 			if(m == undefined) do (
-				print ("Error material \"" + n + "\" not found!")
+				print ("==== Error material \"" + n + "\" not found! ====")
 				continue
 			)
 			
@@ -189,14 +199,22 @@ rollout _STEP1 "Material Renamer"
 			n = substituteString n @"\" @"\\"
 			n = substituteString n "'" @"\'"
 
-			objs = try(execute("$'" + n + "'* as array")) catch(
-				print ("Can't get objects with name \"" + n + "\"")
+			tmp_objs = try(execute("$'" + n + "'* as array")) catch(
+				print ("====  Can't get objects with name \"" + n + "\" ====")
+			)
+			
+			if(rdoAssignTo.state == 2) then (
+				for oo in (selection as array) do (
+					if(findItem tmp_objs oo != 0) do append objs oo
+				)
+			) else (
+				objs = tmp_objs
 			)
 			
 			progressUpdate (100 * i / matNames.count)
 			
 			if(objs == undefined or objs.count == 0) do (
-				print ("Objects for material \"" + n + "\" not found!")
+				print ("==== Objects for material \"" + n + "\" not found! ====")
 				continue
 			)
 			
@@ -225,10 +243,18 @@ rollout _STEP1 "Material Renamer"
 		
 		useSettings "MAT_PATH" szMatPath type:#set
 	)
+	
+	on rdoAssignTo changed a do (
+		useSettings "APPLY_TO" (a as string) type:#set
+	)
 		
 	on _STEP1 open do (
 		szMatPath = getMatPath()
 		if(szMatPath != undefined) do edtMatPath.text = szMatPath
+		
+		szApplyTo = useSettings "APPLY_TO" "" type:#get
+		if(szApplyTo != "") do try(rdoAssignTo.state = szApplyTo as integer) catch()
+				
 		
 		n = "\r\n"
 		initText = "Quick Tips:" + n + n
@@ -246,9 +272,12 @@ rollout _STEP1 "Material Renamer"
 	)
 	
 	on btnAutoAssignMaterials pressed do (
-		q = queryBox "Do you really want to assign materials from library to all scene objects?" title: "Confirm?"
+		r = rdoAssignTo.state
+		type = if(r == 2) then "selected" else "all"
+		if(r == 2 and selection.count == 0) do return messageBox "Please select objects!" title: "Warning!"
+		q = queryBox ("Do you really want to assign materials from library to " + type + " scene objects?") title: "Confirm?"
 		if(not q) do return false
-		
+				
 		szMatPath = getMatPath()
 		if(szMatPath == undefined) do return messageBox "Please select correct material library" title: "Error!"
 		
