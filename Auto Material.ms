@@ -2,7 +2,7 @@
 [INFO] 
 
 NAME = Auto Material
-VERSION = 1.0.2
+VERSION = 1.0.3
 AUTHOR = Vasily Lukyanenko
 DEV = 3DGROUND
 CUSTOMER = Andrew Andreyuk
@@ -28,6 +28,10 @@ ICON=#("PhysX_Main", 30)
 
 + Added: Choose apply materials to all or selected objects =
 + Added: Highlight error log with special symbols =
+
+[1.0.3]
+
++ Added: Assign random materials from library with use brakets in the name=
 
 [ABOUT]
 
@@ -163,8 +167,15 @@ rollout _STEP1 "Material Renamer"
 	)
 	
 	fn getMatByName n matLib = (
-		for i in 1 to matLib.count where matLib[i] != undefined and matLib[i].name == n do return matLib[i]
+		for i in 1 to matLib.count where matLib[i] != undefined and (matLib[i].name == n) do return matLib[i]
 		return undefined
+	)
+	
+	fn findVariations m matLib = (
+		mm = for i in 1 to matLib.count where matLib[i] != undefined and (matchPattern matLib[i].name pattern: (m.name + "[*]")) collect matLib[i]
+		append mm m
+			
+		return mm[random 1 mm.count]
 	)
 	
 	fn assignAutoMaterial szMatPath = (		
@@ -180,7 +191,7 @@ rollout _STEP1 "Material Renamer"
 		
 		c = matLib.count
 		
-		matNames = for i in 1 to c where matLib[i] != undefined collect matLib[i].name
+		matNames = for i in 1 to c where matLib[i] != undefined and (matchPattern matLib[i].name pattern: ("*[*]")) == false collect matLib[i].name
 		qsort matNames compareFN
 		
 		progressStart "Apply Auto Material"
@@ -219,8 +230,9 @@ rollout _STEP1 "Material Renamer"
 			)
 			
 			for o in objs where o != undefined do try(
-				o.material = m
-				print ("Assign material \"" + m.name + "\" to \"" + o.name + "\"")
+				--o.material = m
+				o.material = findVariations m matLib
+				print ("Assign material \"" + o.material.name + "\" to \"" + o.name + "\"")
 			) catch()
 		)
 		enableSceneRedraw()
@@ -260,6 +272,7 @@ rollout _STEP1 "Material Renamer"
 		initText = "Quick Tips:" + n + n
 		initText += "1. Do not use cyrillic symbols in object names!" + n
 		initText += "2. Be careful when copy objects with SHIFT hotkey. Double check the names after cloning!" + n
+		initText += "3. Use brackets in material library names for define random materials ex.: test_02[1], test_02[2], test_02[3] ..." + n
 		
 		edtMiniManual.MultiLine = true
 		edtMiniManual.scrollbars = (dotnetclass "System.Windows.Forms.ScrollBars").vertical		
