@@ -2,7 +2,7 @@
 [INFO] 
 
 NAME = Auto Material
-VERSION = 1.0.3
+VERSION = 1.0.4
 AUTHOR = Vasily Lukyanenko
 DEV = 3DGROUND
 CUSTOMER = Andrew Andreyuk
@@ -32,6 +32,10 @@ ICON=#("PhysX_Main", 30)
 [1.0.3]
 
 + Added: Assign random materials from library with use brakets in the name=
+
+[1.0.4]
+
++ Added: Option move objects to layer=
 
 [ABOUT]
 
@@ -137,13 +141,15 @@ rollout _STEP1 "Material Renamer"
 		dotNetControl edtMiniManual "System.Windows.Forms.TextBox" width: 240  height: 200
 	)
 	
-	group "Material Lib Path"
-	(
+	group "Material Lib Path" (
 		radiobuttons rdoAssignTo "Assign Materials To:" labels: #("All scene objects", "Selected objects") align: #left
 		edittext edtMatPath "" height: 25 readOnly: true
 		button btnSelectMatPath "Select Path" 
 	)
 	
+	group "Settings" (
+		checkbox cbxMoveToLayer "Move objects to layer" align: #left
+	)
 	
 	button btnAutoAssignMaterials "Assign Materials to Objects" height: 35 width: 240 offset: [0, 12]
 	
@@ -178,6 +184,17 @@ rollout _STEP1 "Material Renamer"
 		return mm[random 1 mm.count]
 	)
 	
+	fn moveToLayer o n =
+	(
+		l = LayerManager.getLayerFromName n
+		if(l == undefined) do 
+		(
+			l = LayerManager.NewLayer()
+			l.setName n
+		)
+		if(l != undefined) do  l.addNode o
+	)
+	
 	fn assignAutoMaterial szMatPath = (		
 		
 		freezeUi()
@@ -188,7 +205,8 @@ rollout _STEP1 "Material Renamer"
 		if(matLib == undefined or matLib.count == 0) do return messageBox "Material library is empty!" title: "Error!"
 		if(rdoAssignTo.state == 2 and selection.count == 0) do return messageBox "Please select objects!" title: "Warning!"
 		
-		
+		szMatName = getFilenameFile szMatPath
+				
 		c = matLib.count
 		
 		matNames = for i in 1 to c where matLib[i] != undefined and (matchPattern matLib[i].name pattern: ("*[*]")) == false collect matLib[i].name
@@ -232,6 +250,9 @@ rollout _STEP1 "Material Renamer"
 			for o in objs where o != undefined do try(
 				--o.material = m
 				o.material = findVariations m matLib
+				
+				if(cbxMoveToLayer.checked) do moveToLayer o szMatName
+				
 				print ("Assign material \"" + o.material.name + "\" to \"" + o.name + "\"")
 			) catch()
 		)
@@ -254,6 +275,12 @@ rollout _STEP1 "Material Renamer"
 		edtMatPath.text = szMatPath
 		
 		useSettings "MAT_PATH" szMatPath type:#set
+		
+		cbxMoveToLayer.caption = "Move objects to layer \"" + (getFileNameFile szMatPath) + "\""
+	)
+	
+	on cbxMoveToLayer changed a do (
+		useSettings "MOVE_TO_LAYER" (a as string) type:#set
 	)
 	
 	on rdoAssignTo changed a do (
@@ -262,10 +289,17 @@ rollout _STEP1 "Material Renamer"
 		
 	on _STEP1 open do (
 		szMatPath = getMatPath()
-		if(szMatPath != undefined) do edtMatPath.text = szMatPath
+		if(szMatPath != undefined) do (
+			edtMatPath.text = szMatPath
+			cbxMoveToLayer.caption = "Move objects to layer \"" + (getFileNameFile szMatPath) + "\""
+		)
 		
 		szApplyTo = useSettings "APPLY_TO" "" type:#get
 		if(szApplyTo != "") do try(rdoAssignTo.state = szApplyTo as integer) catch()
+		
+		
+		szMoveToLayer = useSettings "MOVE_TO_LAYER" "" type:#get
+		if(szMoveToLayer != "") do try(cbxMoveToLayer.checked = szMoveToLayer as booleanClass) catch()
 				
 		
 		n = "\r\n"
