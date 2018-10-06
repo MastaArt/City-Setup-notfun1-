@@ -2,7 +2,7 @@
 [INFO] 
 
 NAME = Auto Material
-VERSION = 1.0.4
+VERSION = 1.1.0
 AUTHOR = Vasily Lukyanenko
 DEV = 3DGROUND
 CUSTOMER = Andrew Andreyuk
@@ -37,6 +37,11 @@ ICON=#("PhysX_Main", 30)
 
 + Added: Option move objects to layer=
 
+[1.1.0]
+
+* Changed: Load several libraries at time=
+- Removed: Load material lib path option=
+
 [ABOUT]
 
 Assign materials from library to objects with according names=
@@ -48,7 +53,7 @@ Assign materials from library to objects with according names=
 
 
 try(closeRolloutFloater rAutoMaterial)catch()
-global rAutoMaterial = newRolloutFloater "Auto Material" 280 600
+global rAutoMaterial = newRolloutFloater "Auto Material" 280 650
 
 global _STEP1
 global BitmapTypes = #(Bitmaptexture, CoronaBitmap)
@@ -141,10 +146,11 @@ rollout _STEP1 "Material Renamer"
 		dotNetControl edtMiniManual "System.Windows.Forms.TextBox" width: 240  height: 200
 	)
 	
-	group "Material Lib Path" (
+	group "Material Libraries" (
 		radiobuttons rdoAssignTo "Assign Materials To:" labels: #("All scene objects", "Selected objects") align: #left
-		edittext edtMatPath "" height: 25 readOnly: true
-		button btnSelectMatPath "Select Path" 
+		listbox lbxMatLibs "" offset: [0, 5]
+		button btnSelectMatPath "Load Mat Libs" across: 2 width: 100 height: 25 offset: [0, 5]
+		button btnClearMatLibs "Clear All" width: 100 height: 25 offset: [0, 5]
 	)
 	
 	group "Settings" (
@@ -153,12 +159,21 @@ rollout _STEP1 "Material Renamer"
 	
 	button btnAutoAssignMaterials "Assign Materials to Objects" height: 35 width: 240 offset: [0, 12]
 	
-	
-	fn getMatPath = (
-		szMatPath = useSettings "MAT_PATH" "" type:#get
+	fn clearMatLibs = (
+		q = queryBox "Do you really want to clear all material libraries from list?" title: "Confirm?"
+		if(not q) do return false
 		
-		if(doesFileExist szMatPath) do return szMatPath
-		return undefined
+		ini = getThisScriptFilename() + ".ini"
+		delIniSetting ini "MAT_LIBS"				
+		lbxMatLibs.items = #()
+	)
+	
+	fn getMatLibs = (
+		ini = getThisScriptFilename() + ".ini"
+		f = getIniSetting ini "MAT_LIBS" 		
+		libs = for i in f where doesFileExist i collect i 				
+		if(libs.count == 0) do return undefined		
+		return libs
 	)
 	
 	fn compareFN v1 v2 =
@@ -195,88 +210,114 @@ rollout _STEP1 "Material Renamer"
 		if(l != undefined) do  l.addNode o
 	)
 	
-	fn assignAutoMaterial szMatPath = (		
+	fn assignAutoMaterial szMatLibs = (		
 		
 		freezeUi()
 		
 		clearListener()
-		matLib = loadTempMaterialLibrary szMatPath
-				
-		if(matLib == undefined or matLib.count == 0) do return messageBox "Material library is empty!" title: "Error!"
+		
 		if(rdoAssignTo.state == 2 and selection.count == 0) do return messageBox "Please select objects!" title: "Warning!"
 		
-		szMatName = getFilenameFile szMatPath
+		for lib in szMatLibs do (
+		
+			matLib = loadTempMaterialLibrary lib
 				
-		c = matLib.count
-		
-		matNames = for i in 1 to c where matLib[i] != undefined and (matchPattern matLib[i].name pattern: ("*[*]")) == false collect matLib[i].name
-		qsort matNames compareFN
-		
-		progressStart "Apply Auto Material"
-		disableSceneRedraw()
-		for i in 1 to matNames.count do (
-			n = matNames[i]
+			szMatName = getFilenameFile lib
 			
-			m = getMatByName n matLib
-			if(m == undefined) do (
-				print ("==== Error material \"" + n + "\" not found! ====")
+			if(matLib == undefined or matLib.count == 0) do (				
+				print ("!!! Material library \"" + szMatName + "\" is empty !!!")
 				continue
 			)
 			
-			objs = #()
+			c = matLib.count
 			
-			n = substituteString n @"\" @"\\"
-			n = substituteString n "'" @"\'"
-
-			tmp_objs = try(execute("$'" + n + "'* as array")) catch(
-				print ("====  Can't get objects with name \"" + n + "\" ====")
-			)
+			matNames = for i in 1 to c where matLib[i] != undefined and (matchPattern matLib[i].name pattern: ("*[*]")) == false collect matLib[i].name
+			qsort matNames compareFN
 			
-			if(rdoAssignTo.state == 2) then (
-				for oo in (selection as array) do (
-					if(findItem tmp_objs oo != 0) do append objs oo
+			progressStart "Apply Auto Material"
+			disableSceneRedraw()
+			for i in 1 to matNames.count do (
+				n = matNames[i]
+				
+				m = getMatByName n matLib
+				if(m == undefined) do (
+					print ("==== Error material \"" + n + "\" not found! ====")
+					continue
 				)
-			) else (
-				objs = tmp_objs
-			)
-			
-			progressUpdate (100 * i / matNames.count)
-			
-			if(objs == undefined or objs.count == 0) do (
-				print ("==== Objects for material \"" + n + "\" not found! ====")
-				continue
-			)
-			
-			for o in objs where o != undefined do try(
-				--o.material = m
-				o.material = findVariations m matLib
 				
-				if(cbxMoveToLayer.checked) do moveToLayer o szMatName
+				objs = #()
 				
-				print ("Assign material \"" + o.material.name + "\" to \"" + o.name + "\"")
-			) catch()
+				n = substituteString n @"\" @"\\"
+				n = substituteString n "'" @"\'"
+
+				tmp_objs = try(execute("$'" + n + "'* as array")) catch(
+					print ("====  Can't get objects with name \"" + n + "\" ====")
+				)
+				
+				if(rdoAssignTo.state == 2) then (
+					for oo in (selection as array) do (
+						if(findItem tmp_objs oo != 0) do append objs oo
+					)
+				) else (
+					objs = tmp_objs
+				)
+				
+				progressUpdate (100 * i / matNames.count)
+				
+				if(objs == undefined or objs.count == 0) do (
+					print ("==== Objects for material \"" + n + "\" not found! ====")
+					continue
+				)
+				
+				for o in objs where o != undefined do try(
+					--o.material = m
+					o.material = findVariations m matLib
+					
+					if(cbxMoveToLayer.checked) do moveToLayer o szMatName
+					
+					print ("Assign material \"" + o.material.name + "\" to \"" + o.name + "\"")
+				) catch()
+			)
+			enableSceneRedraw()
+			progressEnd()
 		)
-		enableSceneRedraw()
-		progressEnd()
 		
 	)
 	
-	on btnSelectMatPath pressed do
+	fn getOpenMatFiles = 
 	(
-		szMatPath = getMatPath()
-		tmp = szMatPath
-		if(tmp == undefined) do tmp = ""
+		f = #()
 		
-		f = getOpenFileName caption:"Choose Material Lib Path" filename: tmp types:"mat (*.mat)|*.mat"
+		d = dotNetObject "System.Windows.Forms.OpenFileDialog" 
+		d.title = "Select Files"
+		d.Multiselect = true
+		d.Filter = "Material Libraries (*.mat)|*.mat"
+		d.FilterIndex = 1
+		
+		result = d.showDialog() 
+		result.ToString() 
+		result.Equals result.OK 
+		result.Equals result.Cancel 
+		
+		f = d.fileNames 
+				 
+		return f
+	)
+	
+	on btnClearMatLibs pressed do clearMatLibs()
+	
+	on btnSelectMatPath pressed do
+	(						
+		f = getOpenMatFiles()
 			
-		if(f == undefined) do return false
+		if(f.count == 0) do return false
 		
-		szMatPath = f
-		edtMatPath.text = szMatPath
+		ini = getThisScriptFilename() + ".ini"
 		
-		useSettings "MAT_PATH" szMatPath type:#set
-		
-		cbxMoveToLayer.caption = "Move objects to layer \"" + (getFileNameFile szMatPath) + "\""
+		delIniSetting ini "MAT_LIBS"
+		for i in f do setIniSetting ini "MAT_LIBS" i ""
+			
+		lbxMatLibs.items = for i in f collect getFileNameFile i				
 	)
 	
 	on cbxMoveToLayer changed a do (
@@ -288,10 +329,9 @@ rollout _STEP1 "Material Renamer"
 	)
 		
 	on _STEP1 open do (
-		szMatPath = getMatPath()
-		if(szMatPath != undefined) do (
-			edtMatPath.text = szMatPath
-			cbxMoveToLayer.caption = "Move objects to layer \"" + (getFileNameFile szMatPath) + "\""
+		szMatLibs = getMatLibs()
+		if(szMatLibs != undefined) do (
+			lbxMatLibs.items = for i in szMatLibs collect getFileNameFile i
 		)
 		
 		szApplyTo = useSettings "APPLY_TO" "" type:#get
@@ -325,11 +365,11 @@ rollout _STEP1 "Material Renamer"
 		q = queryBox ("Do you really want to assign materials from library to " + type + " scene objects?") title: "Confirm?"
 		if(not q) do return false
 				
-		szMatPath = getMatPath()
-		if(szMatPath == undefined) do return messageBox "Please select correct material library" title: "Error!"
+		szMatLibs= getMatLibs()
+		if(szMatLibs == undefined) do return messageBox "Please select at least one material library" title: "Error!"
 		
 		undo off (
-			assignAutoMaterial szMatPath		
+			assignAutoMaterial szMatLibs		
 		)
 	)
 )
