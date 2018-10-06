@@ -2,7 +2,7 @@
 [INFO] 
 
 NAME = Auto Material
-VERSION = 1.1.0
+VERSION = 1.1.1
 AUTHOR = Vasily Lukyanenko
 DEV = 3DGROUND
 CUSTOMER = Andrew Andreyuk
@@ -41,6 +41,10 @@ ICON=#("PhysX_Main", 30)
 
 * Changed: Load several libraries at time=
 - Removed: Load material lib path option=
+
+[1.1.1]
+
+* Changed: Avoid list libs list cleaning=
 
 [ABOUT]
 
@@ -314,10 +318,13 @@ rollout _STEP1 "Material Renamer"
 		
 		ini = getThisScriptFilename() + ".ini"
 		
-		delIniSetting ini "MAT_LIBS"
+		--delIniSetting ini "MAT_LIBS"
+				
 		for i in f do setIniSetting ini "MAT_LIBS" i ""
 			
-		lbxMatLibs.items = for i in f collect getFileNameFile i				
+		libs = getMatLibs()
+			
+		lbxMatLibs.items = for i in libs collect getFileNameFile i				
 	)
 	
 	on cbxMoveToLayer changed a do (
@@ -366,7 +373,7 @@ rollout _STEP1 "Material Renamer"
 		if(not q) do return false
 				
 		szMatLibs= getMatLibs()
-		if(szMatLibs == undefined) do return messageBox "Please select at least one material library" title: "Error!"
+		if(szMatLibs == undefined) do return messageBox "Please select at least one material library!" title: "Error!"
 		
 		undo off (
 			assignAutoMaterial szMatLibs		
