@@ -2,7 +2,7 @@
 [INFO] 
 
 NAME = Auto Material
-VERSION = 1.1.1
+VERSION = 1.1.2
 AUTHOR = Vasily Lukyanenko
 DEV = 3DGROUND
 CUSTOMER = Andrew Andreyuk
@@ -42,7 +42,7 @@ ICON=#("PhysX_Main", 30)
 * Changed: Load several libraries at time=
 - Removed: Load material lib path option=
 
-[1.1.1]
+[1.1.2]
 
 * Changed: Avoid list libs list cleaning=
 
@@ -59,7 +59,7 @@ Assign materials from library to objects with according names=
 try(closeRolloutFloater rAutoMaterial)catch()
 global rAutoMaterial = newRolloutFloater "Auto Material" 280 650
 
-global _STEP1
+global _AUTO_MATERIAL_STEP1
 global BitmapTypes = #(Bitmaptexture, CoronaBitmap)
 
 fn trim s c: " " = trimRight (trimLeft s c) c
@@ -144,7 +144,7 @@ fn freezeUi =
   	windowsGhosting.DisableProcessWindowsGhosting()
 )
 
-rollout _STEP1 "Material Renamer"
+rollout _AUTO_MATERIAL_STEP1 "Material Renamer"
 (
 	group "Info" (		
 		dotNetControl edtMiniManual "System.Windows.Forms.TextBox" width: 240  height: 200
@@ -218,7 +218,7 @@ rollout _STEP1 "Material Renamer"
 		
 		freezeUi()
 		
-		clearListener()
+		
 		
 		if(rdoAssignTo.state == 2 and selection.count == 0) do return messageBox "Please select objects!" title: "Warning!"
 		
@@ -335,7 +335,7 @@ rollout _STEP1 "Material Renamer"
 		useSettings "APPLY_TO" (a as string) type:#set
 	)
 		
-	on _STEP1 open do (
+	on _AUTO_MATERIAL_STEP1 open do (
 		szMatLibs = getMatLibs()
 		if(szMatLibs != undefined) do (
 			lbxMatLibs.items = for i in szMatLibs collect getFileNameFile i
@@ -403,5 +403,5 @@ rollout _rAbout "About"
 	)
 )
 
-addRollout _STEP1 rAutoMaterial 
+addRollout _AUTO_MATERIAL_STEP1 rAutoMaterial 
 addRollout _rAbout rAutoMaterial rolledUp:true
