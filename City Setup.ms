@@ -32,6 +32,8 @@ Quick apply actions to the city=
 */	
 
 
+
+
 try(closeRolloutFloater rCitySetup)catch()
 global rCitySetup = newRolloutFloater "City Setup" 280 920
 
@@ -516,6 +518,10 @@ rollout _CITY_SETUPL_STEP1 "Main"
 		units.SystemType = #meters
 		--
 		
+		
+			
+		boost()
+				
 		-- Import FBX
 		resetMaxFile #noPrompt 				
 		importFile f #noPrompt		
@@ -530,8 +536,9 @@ rollout _CITY_SETUPL_STEP1 "Main"
 		-- Apply Materials
 		szMatLibs= getMatLibs()
 		fileIn pathAutoMaterial
-		_AUTO_MATERIAL_STEP1.rdoAssignTo.state == 1
-		_AUTO_MATERIAL_STEP1.assignAutoMaterial szMatLibs
+		setFocus btnLoadCityFBX
+		::_AUTO_MATERIAL_STEP1.rdoAssignTo.state = 1
+		::_AUTO_MATERIAL_STEP1.assignAutoMaterial szMatLibs
 		try(closeRolloutFloater rAutoMaterial)catch()
 		
 		-- Load Render Presets
@@ -549,7 +556,10 @@ rollout _CITY_SETUPL_STEP1 "Main"
 		
 		-- Strip Paths
 		stripMapPaths()
-	)
+		
+		setFocus btnLoadCityFBX
+		messageBox "City loaded success!" title: "Success!" beep: false
+	) 
 	
 	on btnLoadCityFBX pressed do (
 		f = getOpenFileName caption:"Choose File" types:"FBX (*.fbx)|*.fbx"
@@ -591,7 +601,7 @@ rollout _CITY_SETUPL_STEP1 "Main"
 	on _CITY_SETUPL_STEP1 open do (
 		pathAutoMaterial = getFileNamePath (getThisScriptFileName()) + "Auto Material.ms"
 		pathAutoMaterialIni = getFileNamePath (getThisScriptFileName()) + "Auto Material.ms.ini"
-		
+					
 		if(not doesFileExist pathAutoMaterial) do (
 			m = "Please download and put Auto Material.ms script in the same folder with City Setup.ms!\n\n"
 			m += "Download and unpack all scripts again!"
@@ -603,6 +613,8 @@ rollout _CITY_SETUPL_STEP1 "Main"
 			m = "MultiScatter not installed!"
 			return fatalError m
 		)
+				
+		setFocus btnLoadCityFBX
 		
 		edtAttachPattern.MultiLine = true
 		edtAttachPattern.scrollbars = (dotnetclass "System.Windows.Forms.ScrollBars").vertical		
@@ -621,7 +633,7 @@ rollout _CITY_SETUPL_STEP1 "Main"
 		-- Load Settings
 		--loadCityFBX()
 		loadMatLibs()
-		loadCameras()
+		--loadCameras()
 		loadAssets()
 		loadPreset()
 		loadAttachPatterns()	
