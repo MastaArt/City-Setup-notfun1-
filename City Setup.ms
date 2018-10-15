@@ -2,7 +2,7 @@
 [INFO] 
 
 NAME = City Setup
-VERSION = 1.0.0
+VERSION = 1.0.1
 AUTHOR = Vasily Lukyanenko
 DEV = 3DGROUND
 CUSTOMER = Andrew Andreyuk
@@ -21,6 +21,12 @@ ICON=#("PhysX_Main", 31)
 
 * First release =
 + Added: New Script Info function=
+
+[1.0.1]
+
++ Added: Save file dialog when press Setup City=
++ Added: Group name for city=
+- BugFix: Units setup=
 
 [ABOUT]
 
@@ -398,9 +404,10 @@ rollout _CITY_SETUPL_STEP1 "Main"
 		)
 	)
 	
-	fn alignObjects = (
+	-- name as FBX
+	fn alignObjects name: "City" = (
 		objs = $*		
-		g = group objs 		
+		g = group objs name: name		
 		g.pivot = objs.center
 		g.pivot.z = objs.min.z
 		g.pos = [0,0,0]
@@ -500,6 +507,12 @@ rollout _CITY_SETUPL_STEP1 "Main"
 			)
 		)
 	)
+	
+	fn setupUnits = (
+		units.displayType = #Metric
+		units.metricType = #Meters
+		units.SystemType = #Meters
+	)
 		
 	on btnSetupCity pressed do (
 		
@@ -511,26 +524,34 @@ rollout _CITY_SETUPL_STEP1 "Main"
 		if(lbxMatLibs.items.count == 0) do return messageBox "Please add at least one material library!" title: "Warning!"	
 		if(edtAssets.text == "") do return messageBox "Please choose assets!" title: "Warning!"
 		if(edtPreset.text == "") do return messageBox "Please choose Render Presets (*.rps)!" title: "Warning!"
-			
-		-- Seup Meters
-		units.DisplayType = #Metric
-		units.MetricType = #meters
-		units.SystemType = #meters
-		--
 		
 		
-			
-		boost()
+		outFile = getSaveFileName caption:"Save File" types:"3ds Max (*.max)|*.max"
+		if(outFile == undefined) do return false
+		
 				
+		boost()
+		
+		-- Seup Meters
+				
+		setupUnits()		
 		-- Import FBX
-		resetMaxFile #noPrompt 				
+		resetMaxFile #noPrompt 		
+		setupUnits()
+		resetMaxFile #noPrompt 	
+		setupUnits()
+		
+		saveMaxFile outFile quiet: true
+		resetMaxFile #noPrompt 
+		loadMaxFile  outFile useFileUnits: true quiet: true
+
 		importFile f #noPrompt		
 		
 		objs = $*
 		if(objs.count == 0) do return messageBox "Error while loading City FBX.\nPlease check FBX manually!" title: "Error!"
 		
 		-- Set pivot and scale
-		alignObjects()
+		alignObjects name: (getFilenameFile edtCityFBX.text)
 		
 
 		-- Apply Materials
@@ -556,6 +577,8 @@ rollout _CITY_SETUPL_STEP1 "Main"
 		
 		-- Strip Paths
 		stripMapPaths()
+		
+		saveMaxFile outFile quiet: true
 		
 		setFocus btnLoadCityFBX
 		messageBox "City loaded success!" title: "Success!" beep: false
