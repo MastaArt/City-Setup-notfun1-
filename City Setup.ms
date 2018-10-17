@@ -2,7 +2,7 @@
 [INFO] 
 
 NAME = City Setup
-VERSION = 1.0.1
+VERSION = 1.0.2
 AUTHOR = Vasily Lukyanenko
 DEV = 3DGROUND
 CUSTOMER = Andrew Andreyuk
@@ -28,6 +28,10 @@ ICON=#("PhysX_Main", 31)
 + Added: Group name for city=
 - BugFix: Units setup=
 
+[1.0.2]
+
++ Added: Apply UVW Map (Face) to scatter object if string begins from "@"=
+
 [ABOUT]
 
 Quick apply actions to the city=
@@ -41,7 +45,7 @@ Quick apply actions to the city=
 
 
 try(closeRolloutFloater rCitySetup)catch()
-global rCitySetup = newRolloutFloater "City Setup" 280 920
+global rCitySetup = newRolloutFloater "City Setup" 280 940
 
 global _CITY_SETUPL_STEP1
 global BitmapTypes = #(Bitmaptexture, CoronaBitmap)
@@ -258,6 +262,9 @@ rollout _CITY_SETUPL_STEP1 "Main"
 		label lblEx22 "Each setting from new line" align: #left
 		label lblEx23 "MultiScatter Helper Name = Object Name Pattern" align: #left
 		label lblEx24 "Ex.: Side_Trees = Tree_place_holder" align: #left
+		label lblEx255 "------" align: #left
+		label lblEx25 "For apply UVW Map (Face) put @ at start of string" align: #left		
+		label lblEx26 "Ex.: @Side_Trees = Tree_place_holder" align: #left
 		dotNetControl edtMultiScatter "System.Windows.Forms.TextBox" width: 240  height: 60
 	)
 	
@@ -354,8 +361,13 @@ rollout _CITY_SETUPL_STEP1 "Main"
 		t = edtMultiScatter.text 
 		a = explode t tag: "\r\n"
 		out = #()
-		
-		for i in a where i != "" and i != " " do (
+				
+		for i in a where i != "" and i != " " do (			
+			isApplyFaceMapping = false
+			if(findString i "@" != undefined) do (
+				i = substituteString i "@" ""
+				isApplyFaceMapping = true
+			)
 			
 			j = explode i tag: "="
 			if(j.count != 2) do continue
@@ -371,6 +383,13 @@ rollout _CITY_SETUPL_STEP1 "Main"
 				print ("!!! Objects for multiscatter \"" + i + "\" not found !!!")
 				continue
 			)
+			
+			if(isApplyFaceMapping) do (
+				uvwFace = Uvwmap()
+				uvwFace.maptype = 5
+				try(addModifier o[1] uvwFace) catch(print ("!!! Error when apply face mappinf for \"" + i + "\" !!!"))
+			)
+					
 			append out #(m[1], o[1])			
 		)
 		
