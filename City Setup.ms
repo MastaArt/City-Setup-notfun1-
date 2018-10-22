@@ -2,7 +2,7 @@
 [INFO] 
 
 NAME = City Setup
-VERSION = 1.0.3
+VERSION = 1.0.4
 AUTHOR = Vasily Lukyanenko
 DEV = 3DGROUND
 CUSTOMER = Andrew Andreyuk
@@ -35,6 +35,10 @@ ICON=#("PhysX_Main", 31)
 [1.0.3]
 
 + Added: Update system=
+
+[1.0.4]
+
++ Added: Fixed MultiScatter error dialog=
 
 [ABOUT]
 
@@ -656,9 +660,8 @@ rollout _CITY_SETUPL_STEP1 "Main"
 		)
 		
 		if(Multiscatter == undefined) do (
-			m = "MultiScatter not installed!"
-			--!!!!
-			--return fatalError m
+			m = "MultiScatter not installed!"			
+			return fatalError m
 		)
 				
 		setFocus btnLoadCityFBX
