@@ -661,7 +661,7 @@ rollout _CITY_SETUPL_STEP1 "Main"
 		
 		if(Multiscatter == undefined) do (
 			m = "MultiScatter not installed!"			
-			return fatalError m
+			--return fatalError m
 		)
 				
 		setFocus btnLoadCityFBX

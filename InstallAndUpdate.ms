@@ -297,7 +297,7 @@ rollout _rUpdater "Install And Update" width: 300 height: 300
 			setTask	msg: "Updates have been installed!" type: #green
 			
 			m = "Updates have been installed!"
-			m += "\n\nPlease restart the 3Ds Max!"
+			m += "\n\nPlease restart the script!"
 			messageBox m title: "Success!" beep: false
 		) else (
 			setTask	msg: "An error has occurred!" type: #red
