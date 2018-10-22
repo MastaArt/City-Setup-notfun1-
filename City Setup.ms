@@ -2,7 +2,7 @@
 [INFO] 
 
 NAME = City Setup
-VERSION = 1.0.4
+VERSION = 1.0.5
 AUTHOR = Vasily Lukyanenko
 DEV = 3DGROUND
 CUSTOMER = Andrew Andreyuk
@@ -36,7 +36,7 @@ ICON=#("PhysX_Main", 31)
 
 + Added: Update system=
 
-[1.0.4]
+[1.0.5]
 
 + Added: Fixed MultiScatter error dialog=
 
