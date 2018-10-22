@@ -2,7 +2,7 @@
 [INFO] 
 
 NAME = City Setup
-VERSION = 1.0.2
+VERSION = 1.0.3
 AUTHOR = Vasily Lukyanenko
 DEV = 3DGROUND
 CUSTOMER = Andrew Andreyuk
@@ -31,6 +31,10 @@ ICON=#("PhysX_Main", 31)
 [1.0.2]
 
 + Added: Apply UVW Map (Face) to scatter object if string begins from "@"=
+
+[1.0.3]
+
++ Added: Update system=
 
 [ABOUT]
 
@@ -653,7 +657,8 @@ rollout _CITY_SETUPL_STEP1 "Main"
 		
 		if(Multiscatter == undefined) do (
 			m = "MultiScatter not installed!"
-			return fatalError m
+			--!!!!
+			--return fatalError m
 		)
 				
 		setFocus btnLoadCityFBX
@@ -694,6 +699,18 @@ rollout _rAbout "About"
 	local c = color 200 200 200 
 	hyperLink href1 "" address: "" align: #center hoverColor: c visitedColor: c offset: [0, 20]
 	
+	button btnUpdate "Update" offset: [0, 20] enabled: false
+	
+	on btnUpdate pressed do 
+	(
+		currPath = getFilenamePath (getThisScriptFileName())
+		
+		try(
+			fileIn (currPath + "InstallAndUpdate.ms")
+			closeRolloutFloater rCitySetup			
+		)catch()
+	)
+	
 	on _rAbout open do
 	(				
 		i = scriptInfo()
@@ -703,7 +720,10 @@ rollout _rAbout "About"
 		lblVer.caption = i.version
 		lblCopy.caption = i.dev
 		href1.address = i.web
-		href1.caption = i.web								
+		href1.caption = i.web	
+
+		currPath = getFilenamePath (getThisScriptFileName())				
+		if(doesFileExist (currPath + "InstallAndUpdate.ms")) do btnUpdate.enabled = true		
 	)
 )
 
