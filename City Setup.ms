@@ -2,7 +2,7 @@
 [INFO] 
 
 NAME = City Setup
-VERSION = 1.0.5
+VERSION = 1.0.6
 AUTHOR = Vasily Lukyanenko
 DEV = 3DGROUND
 CUSTOMER = Andrew Andreyuk
@@ -40,6 +40,11 @@ ICON=#("PhysX_Main", 31)
 
 + Added: Fixed MultiScatter error dialog=
 
+[1.0.6]
+
+* Changed: UI "Browse File" changed to "..."=
++ Added: Batch Render Button=
+
 [ABOUT]
 
 Quick apply actions to the city=
@@ -53,7 +58,7 @@ Quick apply actions to the city=
 
 
 try(closeRolloutFloater rCitySetup)catch()
-global rCitySetup = newRolloutFloater "City Setup" 280 940
+global rCitySetup = newRolloutFloater "City Setup" 320 960
 
 global _CITY_SETUPL_STEP1
 global BitmapTypes = #(Bitmaptexture, CoronaBitmap)
@@ -129,6 +134,13 @@ fn useSettings k v type:#get =
 		#set: setIniSetting f "SETTINGS" k v
 		default: getIniSetting f "SETTINGS" k
 	)
+)
+
+fn isVray =
+(
+	rr = renderers.current
+	if(matchPattern (rr as string) pattern:"V_Ray_Adv*") do return true
+	return false
 )
 
 fn boost = if (((maxVersion())[1] / 1000) >= 13) do windows.processPostedMessages() 
@@ -227,14 +239,35 @@ fn quickAttach objs name: undefined = (
 	return t
 )
 
+fn animateCamera = (	
+	c1 = cameras[1]
+	if(c1 == undefined) do return false
+	sliderTime = 0f
+	animatedCam = freeCamera fov: c1.fov name: "Animated Camera Render"
+	cams = for c in cameras as array where classOf c != Targetobject collect c
+	
+	animate on (
+		for c in 1 to cams.count do (
+			at time (c-1) (
+				animatedCam.transform = cams[c].transform
+				animatedCam.pos = cams[c].pos
+			)
+		)
+	)
+
+	animationRange = interval 0 (cams.count-1)
+	
+	return animatedCam
+)
+
 global pathAutoMaterial = ""
 global pathAutoMaterialIni = ""
 
 rollout _CITY_SETUPL_STEP1 "Main"
 (
 	group "Load City (*.fbx)" (
-		edittext edtCityFBX "" readonly: true height: 25
-		button btnLoadCityFBX "Browse File" width: 100 height: 25 
+		edittext edtCityFBX "" readonly: true height: 25 across: 2 align: #left fieldwidth: 238
+		button btnLoadCityFBX "..." width: 35 height: 25 align: #right
 	)
 	
 	group "Material Libraries (Auto Material)" (
@@ -244,25 +277,25 @@ rollout _CITY_SETUPL_STEP1 "Main"
 	)
 	
 	group "Load Cameras (*.max) (optional)" (
-		edittext edtCameras "" readonly: true height: 25
-		button btnLoadCameras "Browse File" width: 100 height: 25 
+		edittext edtCameras "" readonly: true height: 25 across: 2 align: #left fieldwidth: 238
+		button btnLoadCameras "..." width: 35 height: 25 align: #right
 	)
 	
 	group "Load Assets (*.max)" (
-		edittext edtAssets "" readonly: true height: 25
-		button btnLoadAssets "Browse File" width: 100 height: 25 
+		edittext edtAssets "" readonly: true height: 25 across: 2 align: #left fieldwidth: 238
+		button btnLoadAssets "..." width: 35 height: 25 align: #right
 	)
 	
 	group "Load Render Preset (*.rps)" (
-		edittext edtPreset "" readonly: true height: 25
-		button btnLoadPreset "Browse File" width: 100 height: 25 
+		edittext edtPreset "" readonly: true height: 25 across: 2 align: #left fieldwidth: 238
+		button btnLoadPreset "..." width: 35 height: 25 align: #right		
 	)
 	
 	group "Attach Objects by Name Pattern (optional)" (
 		label lblEx1 "Unique part of name" align: #left
 		label lblEx2 "Each name from new line" align: #left
 		label lblEx3 "Ex.: Roof_Grass or Ground_Grass ..." align: #left
-		dotNetControl edtAttachPattern "System.Windows.Forms.TextBox" width: 240  height: 60
+		dotNetControl edtAttachPattern "System.Windows.Forms.TextBox" width: 285  height: 60
 	)
 	
 	group "MultiScatter (optional)" (
@@ -273,10 +306,18 @@ rollout _CITY_SETUPL_STEP1 "Main"
 		label lblEx255 "------" align: #left
 		label lblEx25 "For apply UVW Map (Face) put @ at start of string" align: #left		
 		label lblEx26 "Ex.: @Side_Trees = Tree_place_holder" align: #left
-		dotNetControl edtMultiScatter "System.Windows.Forms.TextBox" width: 240  height: 60
+		dotNetControl edtMultiScatter "System.Windows.Forms.TextBox" width: 285  height: 60
 	)
 	
-	button btnSetupCity "Setup City" height: 35 width: 240 offset: [0, 12]
+	button btnSetupCity "Setup City" height: 35 width: 240 offset: [0, 5]
+	checkbox cbxAutoRender "Auto Render" checked: false enabled: false
+	
+	group "Render" (
+		edittext edtBatchRenderPath "" readonly: true height: 25 across: 2 align: #left fieldwidth: 238
+		button btnSetBatchRenderPath "..." width: 35 height: 25 align: #right
+		
+		button btnBatchCamsRender "Batch Cams Render" width: 240 height: 35
+	)
 	
 	fn getObjectsByName n = (execute ("$" + n + "*")) as array
 	
@@ -304,6 +345,16 @@ rollout _CITY_SETUPL_STEP1 "Main"
 			return v
 		)
 		edtCityFBX.text = ""
+		return ""
+	)
+	
+	fn loadBatchRender = (
+		v = useSettings "BATCH_RENDER" undefined type:#get
+		if(v != "") do (
+			edtBatchRenderPath.text = v		
+			return v
+		)
+		edtBatchRenderPath.text = ""
 		return ""
 	)
 	
@@ -460,6 +511,45 @@ rollout _CITY_SETUPL_STEP1 "Main"
 		return f
 	)
 	
+	fn batchCamsRender = (	
+		q = queryBox "Do you really want to render this city?" title: "Confirm?"
+		if(not q) do return false		
+		
+		if(not isVray()) do return messageBox "V-Ray not assigned!" title: "Error!"
+		vr = renderers.current
+			
+		ff = edtCityFBX.text
+		if(ff == "") do return messageBox "Please select City FBX file!" title: "Warning!"			
+			
+		bb = edtBatchRenderPath.text
+		if(bb == "") do return messageBox "Please Batch Render Path!" title: "Warning!"		
+			
+		tmp = @"C:\temp\temp.jpg"
+		deleteFile tmp
+			
+		n = bb + (getFileNameFile ff) + "_.png"
+			
+		c = animateCamera()
+		viewport.setCamera c
+		if (renderSceneDialog.isOpen()) do renderSceneDialog.close() 
+			
+		rendSaveFile = true
+		rendOutputFilename = tmp		
+		rendTimeType = 2
+		
+		/*vr.output_saveRawFile = true 
+		vr.output_on = true
+		vr.output_rawFileName = n*/
+		vr.output_splitgbuffer = true
+		vr.output_splitfilename = n
+			
+		renderSceneDialog.update()
+		
+		max quick render
+	)
+	
+	on btnBatchCamsRender pressed do batchCamsRender()
+	
 	on edtAttachPattern TextChanged s a do (
 		t = edtAttachPattern.text
 		bad = #("\t", "*", "\"", "'", "|")
@@ -611,6 +701,18 @@ rollout _CITY_SETUPL_STEP1 "Main"
 		messageBox "City loaded success!" title: "Success!" beep: false
 	) 
 	
+	on btnSetBatchRenderPath pressed do (		
+			
+		f = getSaveFileName filename: "DO NOT CHANGE NAME" caption:"Save File" types:"PNG (*.png)|*.png"
+		if(f == undefined) do return false
+		
+		p = getFileNamePath f
+				
+		useSettings "BATCH_RENDER" p type:#set
+		
+		loadBatchRender()
+	)
+	
 	on btnLoadCityFBX pressed do (
 		f = getOpenFileName caption:"Choose File" types:"FBX (*.fbx)|*.fbx"
 		if(f == undefined) do return false
@@ -682,6 +784,7 @@ rollout _CITY_SETUPL_STEP1 "Main"
 		
 		-- Load Settings
 		--loadCityFBX()
+		loadBatchRender()
 		loadMatLibs()
 		--loadCameras()
 		loadAssets()
