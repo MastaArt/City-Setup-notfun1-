@@ -563,10 +563,12 @@ rollout _CITY_SETUPL_STEP1 "Main"
 					
 		if(not isVray()) do return messageBox "V-Ray not assigned!" title: "Error!"
 		vr = renderers.current
+		cams = cameras as array
 				
 		bb = edtBatchRenderPath.text
 		if(bb == "") do return messageBox "Please Batch Render Path!" title: "Warning!"	
-		if(maxFileName == "") do messageBox "City setup? Seems the clear scene" title: "Warning!"	
+		if(maxFileName == "") do return messageBox "City setup? Seems the clear scene!" title: "Warning!"	
+		if(cams.count == 0) do return messageBox "Cameras not found!" title: "Warning!"	
 			
 		tmp = @"C:\temp\temp_out_render_.jpg"
 		for ii in (getFiles @"C:\temp\temp_out_render_*.jpg") do deleteFile ii
