@@ -2,7 +2,7 @@
 [INFO] 
 
 NAME = City Setup
-VERSION = 1.0.6
+VERSION = 1.0.7
 AUTHOR = Vasily Lukyanenko
 DEV = 3DGROUND
 CUSTOMER = Andrew Andreyuk
@@ -44,6 +44,12 @@ ICON=#("PhysX_Main", 31)
 
 * Changed: UI "Browse File" changed to "..."=
 + Added: Batch Render Button=
+
+[1.0.7]
+
+* Changed: Baloon Tooltips=
++ Added: Setup & Save path=
+- BugFix: VRay save render elements=
 
 [ABOUT]
 
@@ -98,18 +104,36 @@ struct scriptInfo (
 	)
 )
 
-fn showTooltip c t =
-(
-	toolTip = dotnetobject "System.Windows.Forms.ToolTip"
-	toolTip.SetToolTip c t   
-	--toolTip.Active = true    
+fn showTooltip c t title: "Info!" args: undefined show: 10000 active: false enable: true align: #right =
+(			
+	toolTip = dotNetObject "System.Windows.Forms.ToolTip"	
+	toolTip.Active = active
+	
+	--if(args != undefined and args.Button != args.Button.Middle) do return false
+	if(not enable) do return false
+			
+	toolTip.SetToolTip c t  
 	toolTip.isBalloon = true
 	toolTip.InitialDelay = 100
-	toolTip.AutoPopDelay = 500
+	toolTip.AutoPopDelay = show
 	toolTip.ReshowDelay = 50
-	toolTip.ToolTipTitle = "Warning!"
-	toolTip.Show t c 3000	
-	toolTip.ToolTipIcon = (dotnetclass "System.Windows.Forms.ToolTipIcon").Warning
+	toolTip.ToolTipTitle = title
+	
+	
+	y = c.Height - 5 
+	x = if(align == #right) then c.Width - 5 else 5
+	
+	
+	toolTip.Show t c x y show
+	i = dotNetClass "System.Windows.Forms.ToolTipIcon"
+	case title of
+	(
+		"Warning!": toolTip.ToolTipIcon = i.Warning
+		"Info!": toolTip.ToolTipIcon = i.Info
+		"Error!": toolTip.ToolTipIcon = i.Error
+	)
+	
+	return toolTip
 )
 
 fn stripName n = (
@@ -292,33 +316,47 @@ rollout _CITY_SETUPL_STEP1 "Main"
 	)
 	
 	group "Attach Objects by Name Pattern (optional)" (
-		label lblEx1 "Unique part of name" align: #left
-		label lblEx2 "Each name from new line" align: #left
-		label lblEx3 "Ex.: Roof_Grass or Ground_Grass ..." align: #left
+		dotNetControl _btnTooltip1 "System.Windows.Forms.Button" align:#right offset: [270, 0]
 		dotNetControl edtAttachPattern "System.Windows.Forms.TextBox" width: 285  height: 60
 	)
+
 	
 	group "MultiScatter (optional)" (
-		label lblEx21 "Apply objects to MultiScatter" align: #left
-		label lblEx22 "Each setting from new line" align: #left
-		label lblEx23 "MultiScatter Helper Name = Object Name Pattern" align: #left
-		label lblEx24 "Ex.: Side_Trees = Tree_place_holder" align: #left
-		label lblEx255 "------" align: #left
-		label lblEx25 "For apply UVW Map (Face) put @ at start of string" align: #left		
-		label lblEx26 "Ex.: @Side_Trees = Tree_place_holder" align: #left
+		dotNetControl _btnTooltip2 "System.Windows.Forms.Button" align:#right offset: [270, 0]
 		dotNetControl edtMultiScatter "System.Windows.Forms.TextBox" width: 285  height: 60
 	)
 	
-	button btnSetupCity "Setup City" height: 35 width: 240 offset: [0, 5]
-	checkbox cbxAutoRender "Auto Render" checked: false enabled: false
+	group "Setup && Save" (
+		edittext edtSaveToPath "" readonly: true height: 25 across: 2 align: #left fieldwidth: 238
+		button btnSaveToPath "..." width: 35 height: 25 align: #right
+		
+		checkbox cbxAutoRender "Auto Render" checked: false
+		button btnSetupCity "Setup City" height: 35 width: 280 offset: [0, 5]		
+	)
 	
 	group "Render" (
 		edittext edtBatchRenderPath "" readonly: true height: 25 across: 2 align: #left fieldwidth: 238
 		button btnSetBatchRenderPath "..." width: 35 height: 25 align: #right
 		
-		button btnBatchCamsRender "Batch Cams Render" width: 240 height: 35
+		button btnBatchCamsRender "Batch Cams Render" width: 280 height: 35
 	)
 	
+	on _btnTooltip1 mouseDown s a do showTooltip s "Unique part of name\r\nEach name from new line\r\nEx.: Roof_Grass or Ground_Grass ..." title: "Info!" show: 25000 args: a
+	on _btnTooltip2 mouseDown s a do showTooltip s "Apply objects to MultiScatter\r\nEach setting from new line\r\nMultiScatter Helper Name = Object Name Pattern\r\n\r\nEx.: Side_Trees = Tree_place_holder\r\n------\r\nFor apply UVW Map (Face) put @ at start of string\r\n\r\nEx.: @Side_Trees = Tree_place_holder" title: "Info!" show: 25000 args: a
+	
+	fn initTooltip c = 
+	(	
+		c.text = "?"
+		c.height = 16
+		c.width = 16
+		c.flatStyle = c.flatStyle.Popup 	
+	)
+	
+	fn initDotNet = 
+	(			
+		initTooltip _btnTooltip1				
+		initTooltip _btnTooltip2				
+	)
 	fn getObjectsByName n = (execute ("$" + n + "*")) as array
 	
 	fn clearMatLibs = (
@@ -355,6 +393,16 @@ rollout _CITY_SETUPL_STEP1 "Main"
 			return v
 		)
 		edtBatchRenderPath.text = ""
+		return ""
+	)
+	
+	fn loadSaveToPath = (
+		v = useSettings "SAVETO" undefined type:#get
+		if(v != "") do (
+			edtSaveToPath.text = v		
+			return v
+		)
+		edtSaveToPath.text = ""
 		return ""
 	)
 	
@@ -512,22 +560,19 @@ rollout _CITY_SETUPL_STEP1 "Main"
 	)
 	
 	fn batchCamsRender = (	
-		q = queryBox "Do you really want to render this city?" title: "Confirm?"
-		if(not q) do return false		
-		
+					
 		if(not isVray()) do return messageBox "V-Ray not assigned!" title: "Error!"
 		vr = renderers.current
-			
-		ff = edtCityFBX.text
-		if(ff == "") do return messageBox "Please select City FBX file!" title: "Warning!"			
-			
+				
 		bb = edtBatchRenderPath.text
-		if(bb == "") do return messageBox "Please Batch Render Path!" title: "Warning!"		
+		if(bb == "") do return messageBox "Please Batch Render Path!" title: "Warning!"	
+		if(maxFileName == "") do messageBox "City setup? Seems the clear scene" title: "Warning!"	
 			
-		tmp = @"C:\temp\temp.jpg"
+		tmp = @"C:\temp\temp_out_render_.jpg"
+		for ii in (getFiles @"C:\temp\temp_out_render_*.jpg") do deleteFile ii
 		deleteFile tmp
 			
-		n = bb + (getFileNameFile ff) + "_.png"
+		n = bb + (getFileNameFile maxFileName) + "_.png"
 			
 		c = animateCamera()
 		viewport.setCamera c
@@ -543,12 +588,24 @@ rollout _CITY_SETUPL_STEP1 "Main"
 		vr.output_splitgbuffer = true
 		vr.output_splitfilename = n
 			
+		split_bitmap = Bitmap 10 10 fileName: n	
+		save split_bitmap
+		close split_bitmap
+			
+		vr.output_splitbitmap = split_bitmap
+		deleteFile n
+			
 		renderSceneDialog.update()
 		
 		max quick render
 	)
 	
-	on btnBatchCamsRender pressed do batchCamsRender()
+	on btnBatchCamsRender pressed do (
+		q = queryBox "Do you really want to render this city?" title: "Confirm?"
+		if(not q) do return false	
+		
+		batchCamsRender()
+	)
 	
 	on edtAttachPattern TextChanged s a do (
 		t = edtAttachPattern.text
@@ -641,12 +698,11 @@ rollout _CITY_SETUPL_STEP1 "Main"
 		if(lbxMatLibs.items.count == 0) do return messageBox "Please add at least one material library!" title: "Warning!"	
 		if(edtAssets.text == "") do return messageBox "Please choose assets!" title: "Warning!"
 		if(edtPreset.text == "") do return messageBox "Please choose Render Presets (*.rps)!" title: "Warning!"
-		
-		
-		outFile = getSaveFileName caption:"Save File" types:"3ds Max (*.max)|*.max"
-		if(outFile == undefined) do return false
-		
+		if(edtSaveToPath.text == "") do return messageBox "Please choose save path!" title: "Warning!"
+		if(edtBatchRenderPath.text == "") do return messageBox "Please Batch Render Path!" title: "Warning!"		
 				
+		outFile = (edtSaveToPath.text) + (getFilenameFile  f) + ".max"
+						
 		boost()
 		
 		-- Seup Meters
@@ -698,7 +754,12 @@ rollout _CITY_SETUPL_STEP1 "Main"
 		saveMaxFile outFile quiet: true
 		
 		setFocus btnLoadCityFBX
-		messageBox "City loaded success!" title: "Success!" beep: false
+		
+		if(cbxAutoRender.checked) then (
+			batchCamsRender()
+		) else (
+			messageBox "City loaded success!" title: "Success!" beep: false
+		)
 	) 
 	
 	on btnSetBatchRenderPath pressed do (		
@@ -711,6 +772,17 @@ rollout _CITY_SETUPL_STEP1 "Main"
 		useSettings "BATCH_RENDER" p type:#set
 		
 		loadBatchRender()
+	)
+	
+	on btnSaveToPath pressed do (
+		f = getSaveFileName filename: "DO NOT CHANGE NAME" caption:"Save File" types:"3ds Max (*.max)|*.max"
+		if(f == undefined) do return false
+		
+		p = getFileNamePath f
+				
+		useSettings "SAVETO" p type:#set
+		
+		loadSaveToPath()
 	)
 	
 	on btnLoadCityFBX pressed do (
@@ -765,6 +837,8 @@ rollout _CITY_SETUPL_STEP1 "Main"
 			m = "MultiScatter not installed!"			
 			--return fatalError m
 		)
+		
+		initDotNet()
 				
 		setFocus btnLoadCityFBX
 		
@@ -786,6 +860,7 @@ rollout _CITY_SETUPL_STEP1 "Main"
 		--loadCityFBX()
 		loadBatchRender()
 		loadMatLibs()
+		loadSaveToPath()
 		--loadCameras()
 		loadAssets()
 		loadPreset()
