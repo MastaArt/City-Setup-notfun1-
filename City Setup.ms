@@ -2,7 +2,7 @@
 [INFO] 
 
 NAME = City Setup
-VERSION = 1.0.7
+VERSION = 1.0.8
 AUTHOR = Vasily Lukyanenko
 DEV = 3DGROUND
 CUSTOMER = Andrew Andreyuk
@@ -51,7 +51,11 @@ ICON=#("PhysX_Main", 31)
 + Added: Setup & Save path=
 - BugFix: VRay save render elements=
 
-[ABOUT]
+[1.0.8]
+
+* Changed: Set Move To Layer for Auto Material=
+
+[ABOUT] 
 
 Quick apply actions to the city=
 
@@ -734,6 +738,7 @@ rollout _CITY_SETUPL_STEP1 "Main"
 		fileIn pathAutoMaterial
 		setFocus btnLoadCityFBX
 		::_AUTO_MATERIAL_STEP1.rdoAssignTo.state = 1
+		::_AUTO_MATERIAL_STEP1.cbxMoveToLayer.checked = true
 		::_AUTO_MATERIAL_STEP1.assignAutoMaterial szMatLibs
 		try(closeRolloutFloater rAutoMaterial)catch()
 		
@@ -837,7 +842,7 @@ rollout _CITY_SETUPL_STEP1 "Main"
 		
 		if(Multiscatter == undefined) do (
 			m = "MultiScatter not installed!"			
-			--return fatalError m
+			return fatalError m
 		)
 		
 		initDotNet()
