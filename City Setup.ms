@@ -2,7 +2,7 @@
 [INFO] 
 
 NAME = City Setup
-VERSION = 1.0.8
+VERSION = 1.0.9
 AUTHOR = Vasily Lukyanenko
 DEV = 3DGROUND
 CUSTOMER = Andrew Andreyuk
@@ -54,6 +54,10 @@ ICON=#("PhysX_Main", 31)
 [1.0.8]
 
 * Changed: Set Move To Layer for Auto Material=
+
+[1.0.9]
+
++ Added: Set "on" setting Smooth Group for FBX importer=
 
 [ABOUT] 
 
@@ -724,7 +728,9 @@ rollout _CITY_SETUPL_STEP1 "Main"
 		resetMaxFile #noPrompt 
 		loadMaxFile  outFile useFileUnits: true quiet: true
 
-		importFile f #noPrompt		
+		-- FBX Settings
+		FBXImporterSetParam "SmoothingGroups" true
+		importFile f #noPrompt using:FBXImporter	
 		
 		objs = $*
 		if(objs.count == 0) do return messageBox "Error while loading City FBX.\nPlease check FBX manually!" title: "Error!"
