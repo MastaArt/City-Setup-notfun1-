@@ -2,7 +2,7 @@
 [INFO] 
 
 NAME = City Setup
-VERSION = 1.1.0
+VERSION = 1.1.1
 AUTHOR = Vasily Lukyanenko
 DEV = 3DGROUND
 CUSTOMER = Andrew Andreyuk
@@ -62,6 +62,10 @@ ICON=#("PhysX_Main", 31)
 [1.1.0]
 
 + Added: Cameras sort=
+
+[1.1.1]
+
+- BugFix: Get cam list=
 
 [ABOUT] 
 
@@ -278,7 +282,7 @@ fn quickAttach objs name: undefined = (
 fn getSortedCamList = (
 	cc = for i in cameras as array where classOf c != Targetobject collect i.name
 	sort cc	
-	l = for i in cc collect execute ("$" + i)
+	l = for i in cc collect execute ("$'" + i + "'")
 	return l
 )
 
