@@ -2,7 +2,7 @@
 [INFO] 
 
 NAME = City Setup
-VERSION = 1.1.1
+VERSION = 1.1.2
 AUTHOR = Vasily Lukyanenko
 DEV = 3DGROUND
 CUSTOMER = Andrew Andreyuk
@@ -66,6 +66,10 @@ ICON=#("PhysX_Main", 31)
 [1.1.1]
 
 - BugFix: Get cam list=
+
+[1.1.2]
+
+- BugFix: Cam target=
 
 [ABOUT] 
 
@@ -280,7 +284,7 @@ fn quickAttach objs name: undefined = (
 )
 
 fn getSortedCamList = (
-	cc = for i in cameras as array where classOf c != Targetobject collect i.name
+	cc = for i in cameras as array where classOf i != Targetobject collect i.name
 	sort cc	
 	l = for i in cc collect execute ("$'" + i + "'")
 	return l
@@ -290,6 +294,7 @@ fn animateCamera = (
 	cams = getSortedCamList()
 	c1 = cams[1]
 	if(c1 == undefined) do return false
+		
 	sliderTime = 0f
 	animatedCam = freeCamera fov: c1.fov name: "Animated Camera Render"
 		
