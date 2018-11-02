@@ -2,7 +2,7 @@
 [INFO] 
 
 NAME = City Setup
-VERSION = 1.0.9
+VERSION = 1.1.0
 AUTHOR = Vasily Lukyanenko
 DEV = 3DGROUND
 CUSTOMER = Andrew Andreyuk
@@ -58,6 +58,10 @@ ICON=#("PhysX_Main", 31)
 [1.0.9]
 
 + Added: Set "on" setting Smooth Group for FBX importer=
+
+[1.1.0]
+
++ Added: Cameras sort=
 
 [ABOUT] 
 
@@ -271,13 +275,20 @@ fn quickAttach objs name: undefined = (
 	return t
 )
 
-fn animateCamera = (	
-	c1 = cameras[1]
+fn getSortedCamList = (
+	cc = for i in cameras as array where classOf c != Targetobject collect i.name
+	sort cc	
+	l = for i in cc collect execute ("$" + i)
+	return l
+)
+
+fn animateCamera = (
+	cams = getSortedCamList()
+	c1 = cams[1]
 	if(c1 == undefined) do return false
 	sliderTime = 0f
 	animatedCam = freeCamera fov: c1.fov name: "Animated Camera Render"
-	cams = for c in cameras as array where classOf c != Targetobject collect c
-	
+		
 	animate on (
 		for c in 1 to cams.count do (
 			at time (c-1) (
