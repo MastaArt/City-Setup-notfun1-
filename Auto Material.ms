@@ -2,7 +2,7 @@
 [INFO] 
 
 NAME = Auto Material
-VERSION = 1.1.2
+VERSION = 1.1.3
 AUTHOR = Vasily Lukyanenko
 DEV = 3DGROUND
 CUSTOMER = Andrew Andreyuk
@@ -46,6 +46,10 @@ ICON=#("PhysX_Main", 30)
 
 * Changed: Avoid list libs list cleaning=
 
+[1.1.3]
+
++ Added: Assign materials by layers name=
+
 [ABOUT]
 
 Assign materials from library to objects with according names=
@@ -57,7 +61,7 @@ Assign materials from library to objects with according names=
 
 
 try(closeRolloutFloater rAutoMaterial)catch()
-global rAutoMaterial = newRolloutFloater "Auto Material" 280 650
+global rAutoMaterial = newRolloutFloater "Auto Material" 280 660
 
 global _AUTO_MATERIAL_STEP1
 global BitmapTypes = #(Bitmaptexture, CoronaBitmap)
@@ -151,7 +155,7 @@ rollout _AUTO_MATERIAL_STEP1 "Material Renamer"
 	)
 	
 	group "Material Libraries" (
-		radiobuttons rdoAssignTo "Assign Materials To:" labels: #("All scene objects", "Selected objects") align: #left
+		radiobuttons rdoAssignTo "Assign Materials To:" labels: #("All scene objects", "Selected objects", "All scene layers") align: #left
 		listbox lbxMatLibs "" offset: [0, 5]
 		button btnSelectMatPath "Load Mat Libs" across: 2 width: 100 height: 25 offset: [0, 5]
 		button btnClearMatLibs "Clear All" width: 100 height: 25 offset: [0, 5]
@@ -162,6 +166,18 @@ rollout _AUTO_MATERIAL_STEP1 "Material Renamer"
 	)
 	
 	button btnAutoAssignMaterials "Assign Materials to Objects" height: 35 width: 240 offset: [0, 12]
+	
+	fn loadSettings = (
+		local szApplyTo = useSettings "APPLY_TO" "" type:#get
+		if(szApplyTo != "") do try(rdoAssignTo.state = szApplyTo as integer) catch()
+		
+		
+		local szMoveToLayer = useSettings "MOVE_TO_LAYER" "" type:#get
+		if(szMoveToLayer != "") do try(cbxMoveToLayer.checked = szMoveToLayer as booleanClass) catch()
+		
+		cbxMoveToLayer.enabled = rdoAssignTo.state != 3
+		cbxMoveToLayer.checked = cbxMoveToLayer.enabled
+	)
 	
 	fn clearMatLibs = (
 		q = queryBox "Do you really want to clear all material libraries from list?" title: "Confirm?"
@@ -214,11 +230,17 @@ rollout _AUTO_MATERIAL_STEP1 "Material Renamer"
 		if(l != undefined) do  l.addNode o
 	)
 	
+	fn getLayerNodes n = (
+		local l = LayerManager.getLayerFromName n
+		if (l == undefined) do return #()
+		l.nodes &nodes
+		return nodes
+	)
+
+	
 	fn assignAutoMaterial szMatLibs = (		
 		
 		freezeUi()
-		
-		
 		
 		if(rdoAssignTo.state == 2 and selection.count == 0) do return messageBox "Please select objects!" title: "Warning!"
 		
@@ -254,16 +276,20 @@ rollout _AUTO_MATERIAL_STEP1 "Material Renamer"
 				n = substituteString n @"\" @"\\"
 				n = substituteString n "'" @"\'"
 
-				tmp_objs = try(execute("$'" + n + "'* as array")) catch(
+				local all_scene_objs = try(execute("$'" + n + "'* as array")) catch(
 					print ("====  Can't get objects with name \"" + n + "\" ====")
 				)
 				
-				if(rdoAssignTo.state == 2) then (
-					for oo in (selection as array) do (
-						if(findItem tmp_objs oo != 0) do append objs oo
+				case rdoAssignTo.state of (
+					1: objs = all_scene_objs
+					2: (
+						for oo in (selection as array) do (
+							if(findItem all_scene_objs oo != 0) do append objs oo
+						)
 					)
-				) else (
-					objs = tmp_objs
+					3: (
+						objs = getLayerNodes n
+					)
 				)
 				
 				progressUpdate (100 * i / matNames.count)
@@ -333,6 +359,7 @@ rollout _AUTO_MATERIAL_STEP1 "Material Renamer"
 	
 	on rdoAssignTo changed a do (
 		useSettings "APPLY_TO" (a as string) type:#set
+		loadSettings()
 	)
 		
 	on _AUTO_MATERIAL_STEP1 open do (
@@ -340,14 +367,8 @@ rollout _AUTO_MATERIAL_STEP1 "Material Renamer"
 		if(szMatLibs != undefined) do (
 			lbxMatLibs.items = for i in szMatLibs collect getFileNameFile i
 		)
-		
-		szApplyTo = useSettings "APPLY_TO" "" type:#get
-		if(szApplyTo != "") do try(rdoAssignTo.state = szApplyTo as integer) catch()
-		
-		
-		szMoveToLayer = useSettings "MOVE_TO_LAYER" "" type:#get
-		if(szMoveToLayer != "") do try(cbxMoveToLayer.checked = szMoveToLayer as booleanClass) catch()
 				
+		loadSettings()
 		
 		n = "\r\n"
 		initText = "Quick Tips:" + n + n
@@ -366,10 +387,15 @@ rollout _AUTO_MATERIAL_STEP1 "Material Renamer"
 	)
 	
 	on btnAutoAssignMaterials pressed do (
-		r = rdoAssignTo.state
-		type = if(r == 2) then "selected" else "all"
+		local r = rdoAssignTo.state
+		type = case r of (
+			1: "all scene objects"
+			2: "selected objects"
+			3: "all scene layers"
+		)
+		
 		if(r == 2 and selection.count == 0) do return messageBox "Please select objects!" title: "Warning!"
-		q = queryBox ("Do you really want to assign materials from library to " + type + " scene objects?") title: "Confirm?"
+		local q = queryBox ("Do you really want to assign materials from library to " + type + "?") title: "Confirm?"
 		if(not q) do return false
 				
 		szMatLibs= getMatLibs()
