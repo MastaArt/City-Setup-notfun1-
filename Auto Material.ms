@@ -2,7 +2,7 @@
 [INFO] 
 
 NAME = Auto Material
-VERSION = 1.1.3
+VERSION = 1.1.4
 AUTHOR = Vasily Lukyanenko
 DEV = 3DGROUND
 CUSTOMER = Andrew Andreyuk
@@ -50,6 +50,10 @@ ICON=#("PhysX_Main", 30)
 
 + Added: Assign materials by layers name=
 
+[1.1.4]
+
++ Added: Options Freeze Mappped Layers and Hide Mapped Layers=
+
 [ABOUT]
 
 Assign materials from library to objects with according names=
@@ -61,7 +65,7 @@ Assign materials from library to objects with according names=
 
 
 try(closeRolloutFloater rAutoMaterial)catch()
-global rAutoMaterial = newRolloutFloater "Auto Material" 280 660
+global rAutoMaterial = newRolloutFloater "Auto Material" 280 695
 
 global _AUTO_MATERIAL_STEP1
 global BitmapTypes = #(Bitmaptexture, CoronaBitmap)
@@ -163,6 +167,8 @@ rollout _AUTO_MATERIAL_STEP1 "Material Renamer"
 	
 	group "Settings" (
 		checkbox cbxMoveToLayer "Move objects to layer" align: #left
+		checkbox cbxFreezeMappedLayers "Freeze mapped layers" align: #left enabled: false
+		checkbox cbxHideMappedLayers "Hide mapped layers" align: #left enabled: false
 	)
 	
 	button btnAutoAssignMaterials "Assign Materials to Objects" height: 35 width: 240 offset: [0, 12]
@@ -175,8 +181,23 @@ rollout _AUTO_MATERIAL_STEP1 "Material Renamer"
 		local szMoveToLayer = useSettings "MOVE_TO_LAYER" "" type:#get
 		if(szMoveToLayer != "") do try(cbxMoveToLayer.checked = szMoveToLayer as booleanClass) catch()
 		
-		cbxMoveToLayer.enabled = rdoAssignTo.state != 3
-		cbxMoveToLayer.checked = cbxMoveToLayer.enabled
+		
+		local isFreezeMappedLayers = useSettings "FREEZE_MAPPED_LAYERS" "" type:#get
+		local isHideMappedLayers = useSettings "HIDE_MAPPED_LAYERS" "" type:#get
+		
+		
+		if (isFreezeMappedLayers != "") do try(cbxFreezeMappedLayers.checked = isFreezeMappedLayers as booleanClass) catch()
+		if (isHideMappedLayers != "") do try(cbxHideMappedLayers.checked = isHideMappedLayers as booleanClass) catch()
+		
+		cbxMoveToLayer.enabled = rdoAssignTo.state != 3						
+		
+		if (cbxMoveToLayer.enabled == false) then (
+			cbxFreezeMappedLayers.enabled = true
+			cbxHideMappedLayers.enabled = true
+		) else (
+			cbxFreezeMappedLayers.enabled = false
+			cbxHideMappedLayers.enabled = false
+		)
 	)
 	
 	fn clearMatLibs = (
@@ -219,15 +240,33 @@ rollout _AUTO_MATERIAL_STEP1 "Material Renamer"
 		return mm[random 1 mm.count]
 	)
 	
-	fn moveToLayer o n =
-	(
-		l = LayerManager.getLayerFromName n
+	fn moveToLayer o n = (
+		local s = rdoAssignTo.state
+		if (not cbxMoveToLayer.checked) do return false
+		if (s != 1 and s != 2) do return false
+		
+		local l = LayerManager.getLayerFromName n
 		if(l == undefined) do 
 		(
 			l = LayerManager.NewLayer()
 			l.setName n
 		)
 		if(l != undefined) do  l.addNode o
+	)
+	
+	fn setStatusMappedLayer oo = (
+		local s = rdoAssignTo.state
+		if (s != 3) do return false
+		if (oo[1] == undefined or  oo[1].layer == undefined) do return false
+		
+		local l = oo[1].layer
+		if (cbxFreezeMappedLayers.checked) do (
+			l.isFrozen = true
+		)
+		
+		if (cbxHideMappedLayers.checked) do (
+			l.on = false
+		)		
 	)
 	
 	fn getLayerNodes n = (
@@ -245,6 +284,7 @@ rollout _AUTO_MATERIAL_STEP1 "Material Renamer"
 		if(rdoAssignTo.state == 2 and selection.count == 0) do return messageBox "Please select objects!" title: "Warning!"
 		
 		for lib in szMatLibs do (
+			local assignType = rdoAssignTo.state
 		
 			matLib = loadTempMaterialLibrary lib
 				
@@ -280,7 +320,7 @@ rollout _AUTO_MATERIAL_STEP1 "Material Renamer"
 					print ("====  Can't get objects with name \"" + n + "\" ====")
 				)
 				
-				case rdoAssignTo.state of (
+				case assignType of (
 					1: objs = all_scene_objs
 					2: (
 						for oo in (selection as array) do (
@@ -299,11 +339,13 @@ rollout _AUTO_MATERIAL_STEP1 "Material Renamer"
 					continue
 				)
 				
+				setStatusMappedLayer objs
+				
 				for o in objs where o != undefined do try(
 					--o.material = m
 					o.material = findVariations m matLib
 					
-					if(cbxMoveToLayer.checked) do moveToLayer o szMatName
+					moveToLayer o szMatName
 					
 					print ("Assign material \"" + o.material.name + "\" to \"" + o.name + "\"")
 				) catch()
@@ -355,6 +397,14 @@ rollout _AUTO_MATERIAL_STEP1 "Material Renamer"
 	
 	on cbxMoveToLayer changed a do (
 		useSettings "MOVE_TO_LAYER" (a as string) type:#set
+	)
+	
+	on cbxFreezeMappedLayers changed a do (
+		useSettings "FREEZE_MAPPED_LAYERS" (a as string) type:#set
+	)
+	
+	on cbxHideMappedLayers changed a do (
+		useSettings "HIDE_MAPPED_LAYERS" (a as string) type:#set
 	)
 	
 	on rdoAssignTo changed a do (
